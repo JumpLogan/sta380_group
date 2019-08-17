@@ -1,0 +1,171 @@
+---
+title: "flights"
+output: html_document
+---
+```{r}
+library(ggplot2)
+
+library(readr)
+data <- read_csv("MSBA/Predictive Modeling/STA380-master/data/ABIA.csv")
+```
+```{r}
+data$Month <- as.factor(data$Month)
+ggplot(data, aes(x=Month, fill=Month))+geom_bar()
+```
+
+
+```{r}
+ggplot(data, aes(x=DayofMonth, fill=Month))+geom_bar()
+```
+
+
+```{r}
+data$DayOfWeek <- as.factor(data$DayOfWeek)
+ggplot(data, aes(x=DayOfWeek, fill=Month))+geom_bar()
+```
+
+
+```{r}
+ggplot(data, aes(x=UniqueCarrier, fill=Month))+geom_bar()
+```
+
+
+
+```{r}
+
+carrier_list = c('AA', 'WN', 'CO', 'B6', 'XE', 'YV')
+
+stuff = data %>%
+  filter(UniqueCarrier %in% carrier_list) %>%
+  group_by(UniqueCarrier) %>%
+  summarize(means = mean(CarrierDelay, na.rm=TRUE))
+
+
+stuff1 = data %>%
+  filter(UniqueCarrier %in% carrier_list) %>%
+  group_by(Month, UniqueCarrier) %>%
+  summarize(means1 = mean(CarrierDelay, na.rm=TRUE))
+
+ggplot(stuff1) + 
+  geom_point(aes(x=Month, y=means1, color=UniqueCarrier)) 
+```
+
+
+```{r}
+data$Month <- as.factor(data$Month)
+aved = data %>%
+  group_by(Month) %>%
+  summarize(means1 = mean(CarrierDelay, na.rm=TRUE))
+
+
+ggplot(aved) + 
+  geom_point(aes(x=Month, y=means1, color=Month)) 
+```
+
+```{r}
+aved1 = data %>%
+  group_by(Month) %>%
+  summarize(CarrierDelay = mean(CarrierDelay, na.rm=TRUE),
+            WeatherDelay = mean(WeatherDelay, na.rm=TRUE),
+            SecurityDelay = mean(SecurityDelay, na.rm=TRUE),
+            LateAircraftDelay = mean(LateAircraftDelay, na.rm=TRUE),
+            total = CarrierDelay + WeatherDelay + SecurityDelay + LateAircraftDelay)
+aved1
+
+a = ggplot(aved1) + 
+  geom_point(aes(x=Month, y=CarrierDelay, color=CarrierDelay)) 
+
+b = ggplot(aved1) + 
+  geom_point(aes(x=Month, y=LateAircraftDelay, color=LateAircraftDelay))
+
+c = ggplot(aved1) + 
+  geom_point(aes(x=Month, y=SecurityDelay, color=SecurityDelay))
+
+d = ggplot(aved1) + 
+  geom_point(aes(x=Month, y=WeatherDelay, color=WeatherDelay))
+
+e = ggplot(aved1) + 
+  geom_point(aes(x=Month, y=total, color=total))
+
+library(gridExtra)
+grid.arrange(a,b,c,d, top='Delay')
+?grid.arrange
+```
+```{r}
+e
+```
+
+```{r}
+sort(table(data$Dest), decreasing = TRUE)
+
+
+dest_list = c('DAL', 'DFW', 'IAH', 'PHX', 'DEN', 'ORD', 'HOU', 'ATL')
+
+dest_stuff = data %>%
+  filter(Dest %in% dest_list) %>%
+  group_by(Dest) %>%
+  summarize(CarrierDelay = mean(CarrierDelay, na.rm=TRUE),
+            WeatherDelay = mean(WeatherDelay, na.rm=TRUE),
+            SecurityDelay = mean(SecurityDelay, na.rm=TRUE),
+            LateAircraftDelay = mean(LateAircraftDelay, na.rm=TRUE),
+            total = CarrierDelay + WeatherDelay + SecurityDelay + LateAircraftDelay)
+
+a1 = ggplot(dest_stuff) + 
+  geom_point(aes(x=Dest, y=CarrierDelay, color=CarrierDelay)) 
+
+b1 = ggplot(dest_stuff) + 
+  geom_point(aes(x=Dest, y=LateAircraftDelay, color=LateAircraftDelay))
+
+c1 = ggplot(dest_stuff) + 
+  geom_point(aes(x=Dest, y=SecurityDelay, color=SecurityDelay))
+
+d1 = ggplot(dest_stuff) + 
+  geom_point(aes(x=Dest, y=WeatherDelay, color=WeatherDelay))
+
+e1 = ggplot(dest_stuff) + 
+  geom_point(aes(x=Dest, y=total, color=total))
+
+library(gridExtra)
+grid.arrange(a1,b1,c1,d1, top='Delay', nrow=2, ncol=2)
+
+
+```
+
+
+```{r}
+e1
+```
+```{r}
+dest_list2 = c('DAL', 'DEN', 'HOU')
+
+dest_stuff2 = data %>%
+  filter(Dest %in% dest_list2) %>%
+  group_by(Dest, Month) %>%
+  summarize(CarrierDelay = mean(CarrierDelay, na.rm=TRUE),
+            WeatherDelay = mean(WeatherDelay, na.rm=TRUE),
+            SecurityDelay = mean(SecurityDelay, na.rm=TRUE),
+            LateAircraftDelay = mean(LateAircraftDelay, na.rm=TRUE),
+            total = CarrierDelay + WeatherDelay + SecurityDelay + LateAircraftDelay)
+
+a12 = ggplot(dest_stuff2) + 
+  geom_point(aes(x=Month, y=CarrierDelay, color=Dest)) 
+
+b12 = ggplot(dest_stuff2) + 
+  geom_point(aes(x=Month, y=LateAircraftDelay, color=Dest))
+
+c12 = ggplot(dest_stuff2) + 
+  geom_point(aes(x=Month, y=SecurityDelay, color=Dest))
+
+d12 = ggplot(dest_stuff2) + 
+  geom_point(aes(x=Month, y=WeatherDelay, color=Dest))
+
+e12 = ggplot(dest_stuff2) + 
+  geom_point(aes(x=Month, y=total, color=Dest))
+
+library(gridExtra)
+grid.arrange(a12,b12,c12,d12, top='Delay', nrow=2, ncol=2)
+```
+```{r}
+e12
+```
+
