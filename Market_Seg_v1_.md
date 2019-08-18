@@ -183,13 +183,7 @@ SSE_grid = foreach(k=k_grid, .combine = "c") %do% {
 plot(k_grid, SSE_grid, xlim=c(0,20))
 ```
 
-![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-4-1.png)
-
-CH Index - measure goodness of fit
-==================================
-
-Find the K that maximize CH\_grid
-=================================
+![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-4-1.png) \# CH Index - measure goodness of fit \# Find the K that maximize CH\_grid
 
 ``` r
 N=nrow(mkt_seg)
@@ -202,10 +196,7 @@ CH_grid = foreach(k=k_grid, .combine = "c") %do% {
 plot(k_grid, CH_grid)
 ```
 
-![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-5-1.png) From the within cluster sum-of-square plot and the CH index plot, we determine that the optimal number of clusters is between 2 and 15. We would like to use 5 as our number of clusters.
-
-K-means clustering
-==================
+![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-5-1.png) From the within cluster sum-of-square plot and the CH index plot, we determine that the optimal number of clusters is between 2 and 15. We would like to use 5 as our number of clusters. \# K-means clustering
 
 ``` r
 set.seed(8)
@@ -337,10 +328,7 @@ qplot(mkt_seg$politics,mkt_seg$current_events,color=factor(kmeans$cluster))
 qplot(mkt_seg$adult,mkt_seg$spam,color=factor(kmeans$cluster)) # cluster 5 
 ```
 
-![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-6-18.png)
-
-Clustering Results
-==================
+![](Market_Seg_v1__files/figure-markdown_github/unnamed-chunk-6-18.png) \# Clustering Results
 
 ``` r
 a=which(kmeans$cluster == 1)
@@ -419,10 +407,7 @@ data.frame(clusters, category, Percentage)%>% as.tbl
     ## 4 cluster4 Current_events 52.1%     
     ## 5 cluster5 Spam           100%
 
-From the visualisation plots, we determine that there are five clusters in the twitter followers for the customer brand: cluster 1: customers who are potentially young ladies who are interested in beauty, cooking, music, art, and fashion cluster 2: customers who are interested politics and people who are fond of traveling cluster 3: customers who are family-oriented and interested in religion cluster 4: customers who are interested in following political news and current events cluster 5: customers who are interested in posting "adult" contents posts are as well as who frequently spam.
-
-Method 2: PCA analysis
-======================
+From the visualisation plots, we determine that there are five clusters in the twitter followers for the customer brand: cluster 1: customers who are potentially young ladies who are interested in beauty, cooking, music, art, and fashion cluster 2: customers who are interested politics and people who are fond of traveling cluster 3: customers who are family-oriented and interested in religion cluster 4: customers who are interested in following political news and current events cluster 5: customers who are interested in posting "adult" contents posts are as well as who frequently spam. \# Method 2: PCA analysis
 
 ``` r
 pc = prcomp(features, scale=TRUE)
