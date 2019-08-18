@@ -1,0 +1,204 @@
+---
+title: "twitter_market_seg"
+author: "Catherine Miao"
+date: "8/10/2019"
+output:
+  md_document:
+    variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(dplyr)
+mkt_seg = read.csv("/Users/CatherineMiao/Desktop/STA380-master/data/social_marketing.csv") %>% as.tbl
+```
+# Method 1: K-means clustering 
+# Exploting Correlations between features 
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+#str(mkt_seg)
+cormp <- cor(mkt_seg[c(2:37)])
+
+cex.before <- par("cex")
+par(cex = 0.7)
+corrplot(cormp, method ='shade',tl.cex = 0.65)
+#par(cex = cex.before)
+
+# strong corelation between personal fitness and health_nutrition 
+# online gaming vs college_uni - 0.77
+# travel vs politics - 0.66 
+# beauty vs cooking - 0.66 
+cor(mkt_seg$politics, mkt_seg$travel) # 0.66 
+cor(mkt_seg$online_gaming, mkt_seg$college_uni) # 0.77
+cor(mkt_seg$personal_fitness,mkt_seg$health_nutrition) #0.81
+cor(mkt_seg$religion, mkt_seg$sports_fandom)
+
+#cormp
+#as.data.frame(apply(cormp, 2, function(x) ifelse (abs(x)>=0.6,x,"NA")))
+
+```
+```{r}
+
+#summary(mkt_seg)
+#names(mkt_seg)
+raw_features = mkt_seg[-1]
+features = scale(raw_features,center = T, scale = T)
+
+mu = attr(features,"scaled:center")
+sigma = attr(features,"scaled:scale")
+
+#nrow(mkt_seg) #7882
+#nrow(na.omit(mkt_seg))
+set.seed(66)
+kmeans=kmeans(features, 5)
+length(which(kmeans$cluster == 1)) 
+length(which(kmeans$cluster == 2)) 
+length(which(kmeans$cluster == 3)) 
+length(which(kmeans$cluster == 4)) 
+length(which(kmeans$cluster == 5)) 
+```
+# Finding Number of Clusters 
+```{r}
+library(foreach)
+library(dplyr)
+library(tidyverse)
+
+set.seed(2)
+mkt_seg = read.csv("/Users/CatherineMiao/Desktop/STA380-master/data/social_marketing.csv") %>% as.tbl
+mkt_seg=na.omit(mkt_seg)
+raw_features = mkt_seg[-1]
+features = scale(raw_features,center = T, scale = T)
+k_grid = seq(1,50, by=1)
+SSE_grid = foreach(k=k_grid, .combine = "c") %do% {
+   cluster_k = kmeans(features,k,nstart=5) 
+   cluster_k$tot.withinss
+ }
+
+
+plot(k_grid, SSE_grid, xlim=c(0,20))
+```
+# CH Index - measure goodness of fit
+# Find the K that maximize CH_grid 
+```{r}
+N=nrow(mkt_seg)
+CH_grid = foreach(k=k_grid, .combine = "c") %do% {
+   W = cluster_k$tot.withinss
+   B = cluster_k$betweenss
+   CH = (B/W)*((N-k)/(k-1))
+   CH
+ }
+plot(k_grid, CH_grid)
+```
+From the within cluster sum-of-square plot and the CH index plot, we determine that the optimal number of clusters is between 2 and 15. We would like to use 5 as our number of clusters. 
+# K-means clustering 
+```{r}
+set.seed(8)
+plot(mkt_seg[c("outdoors","computers")],col=kmeans$cluster)
+
+names(mkt_seg)
+
+qplot(food, cooking, data=mkt_seg, color=factor(kmeans$cluster))
+qplot(mkt_seg$online_gaming,mkt_seg$college_uni,color=factor(kmeans$cluster))
+qplot(mkt_seg$art,mkt_seg$music,color=factor(kmeans$cluster))
+qplot(mkt_seg$small_business,mkt_seg$art,color=factor(kmeans$cluster))
+qplot(mkt_seg$personal_fitness,mkt_seg$health_nutrition,color=factor(kmeans$cluster)) 
+qplot(mkt_seg$politics,mkt_seg$travel,color=factor(kmeans$cluster))
+qplot(mkt_seg$politics,mkt_seg$current_events,color=factor(kmeans$cluster))
+qplot(mkt_seg$politics,mkt_seg$small_business,color=factor(kmeans$cluster))
+
+# cluster 1 
+qplot(mkt_seg$beauty,mkt_seg$cooking,color=factor(kmeans$cluster)) 
+qplot(mkt_seg$cooking, mkt_seg$fashion,color=factor(kmeans$cluster))
+
+# cluster 2
+qplot(mkt_seg$politics,mkt_seg$travel,color=factor(kmeans$cluster))
+qplot(mkt_seg$politics,mkt_seg$news,color=factor(kmeans$cluster))
+qplot(mkt_seg$politics,mkt_seg$small_business,color=factor(kmeans$cluster))
+
+# cluster 3
+qplot(mkt_seg$religion,mkt_seg$sports_fandom,color=factor(kmeans$cluster)) 
+qplot(mkt_seg$family,mkt_seg$parenting,color=factor(kmeans$cluster))
+
+# cluster 4 
+qplot(mkt_seg$politics,mkt_seg$current_events,color=factor(kmeans$cluster))
+# cluster 5 
+qplot(mkt_seg$adult,mkt_seg$spam,color=factor(kmeans$cluster)) # cluster 5 
+```
+# Clustering Results 
+```{r}
+a=which(kmeans$cluster == 1)
+b=which(kmeans$cluster == 2)
+c=which(kmeans$cluster == 3)
+d=which(kmeans$cluster == 4)
+e=which(kmeans$cluster == 5)
+
+library(scales)
+cluster1 = mkt_seg[a,]
+Beauty = sum(cluster1$beauty)/sum(mkt_seg$beauty)
+percent(Beauty)
+
+cluster2 = mkt_seg[b,]
+Politics = sum(cluster2$politics)/sum(mkt_seg$politics)
+percent(Politics)
+
+cluster3 = mkt_seg[c,]
+Religion = sum(cluster3$religion)/sum(mkt_seg$religion)
+percent(Religion)
+
+cluster4 = mkt_seg[d,]
+Current_events = sum(cluster4$current_events)/sum(mkt_seg$current_events)
+percent(Current_events)
+
+cluster5 = mkt_seg[e,]
+spam = sum(cluster5$spam)/sum(mkt_seg$spam)
+percent(spam)
+
+clusters <- c('cluster1', 'cluster2', 'cluster3', 'cluster4','cluster5') 
+category <- c('Beauty', 'Politics', 'Religion', 'Current_events','Spam')
+Percentage <- c(percent(Beauty),percent(Politics),percent(Religion),percent(Current_events),percent(spam))
+data.frame(clusters, category, Percentage)%>% as.tbl
+```
+From the visualisation plots, we determine that there are five clusters in the twitter followers for the customer brand:
+cluster 1: customers who are potentially young ladies who are interested in beauty, cooking, music, art, and fashion \newline
+cluster 2: customers who are interested politics and people who are fond of traveling \newline
+cluster 3: customers who are family-oriented and interested in religion \newline
+cluster 4: customers who are interested in following political news and current events \newline
+cluster 5: customers who are interested in posting "adult" contents posts are as well as who frequently spam. \newline 
+# Method 2: PCA analysis 
+```{r}
+pc = prcomp(features, scale=TRUE)
+#pc # values are eigenvector in each PC 
+# summary(pc)
+# PC25 explain 91% of the variance 
+plot(pc,type="l")
+bp = biplot(pc, scale=0, cex=0.3)
+
+# Extract PC scores 
+#str(pc)
+#pc$x
+df <- cbind(features, pc$x[, 1:2])
+#head(df)
+
+# Plot with ggplot 
+library(ggplot2)
+df = data.frame(df)
+ggplot(df, aes(PC1, PC2)) +  
+  geom_point(shape =21, col='black')
+```
+```{r}
+#pc$x[,1:25]
+df = data.frame(pc$x[,1:25])
+#df
+
+sort(pc$rotation[,1]) 
+#religion food parenting sports_fandom (top negative)
+
+sort(pc$rotation[,2]) # sports_fandom religion parenting food (top negative)
+# cooking photo_sharing fashion shopping (top positive)
+
+```
+Analyzing the first two principal components of our dataset, we cluster all the followers into three major groups. 
+If we draw an y-axis at x=0, and an x-axis at y=0, we will find inactive twitter users lie on the right of the  y-axis. For all the useres on the left of the y-axis, we consider them as active users and cluster them into two major groups. Those users who lie on the second quadrant, we think they are more likely to be middle-aged people who have a family, since they tend to pay more attention about parenting, religion, and family life. While those users who lie on the third quadrant, they tend to be young ladies who focus more on beauty, shopping, fashion and, photosharing. 
