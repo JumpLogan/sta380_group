@@ -1,0 +1,140 @@
+---
+title: "Author attribution"
+output: github_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+In the following, we will fit a Naive Bayes model and a Random Forest model to 50 articles from 50 different authors to predict the author of a test set of articles on the basis of its textual content.
+
+# Create a Dense Document Term Matrix
+### Import libraries
+```{r}
+library(tm) 
+library(magrittr)
+library(glmnet)
+library(nnet)
+```
+
+### Reader function that specifies English
+```{r}
+readerPlain = function(fname){readPlain(elem=list(content=readLines(fname)), id=fname, language='en')}
+
+train_filelist = Sys.glob('../data/ReutersC50/C50train/*/*.txt')
+test_filelist = Sys.glob('../data/ReutersC50/C50test/*/*.txt')
+train = lapply(train_filelist, readerPlain) 
+test = lapply(test_filelist, readerPlain) 
+```
+
+### Clean up the file names
+```{r}
+names_train = train_filelist %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+names_test = test_filelist %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+```
+
+### Rename the articles
+```{r}
+names(train) = names_train
+names(test) = names_test
+```
+
+### Create a corpus of documents
+```{r}
+doc_train_raw = Corpus(VectorSource(train))
+doc_test_raw  = Corpus(VectorSource(test))
+```
+
+### Some pre-processing/tokenization steps.
+tm_map just maps some function to every document in the corpus
+ 1. Make everything lowercase
+ 2. Remove numbers
+ 3. Remove punctuation
+ 4. Remove excess white-space
+ 5. Remove stopwords
+```{r}
+doc_train = doc_train_raw
+doc_train = tm_map(doc_train, content_transformer(tolower)) # make everything lowercase
+doc_train = tm_map(doc_train, content_transformer(removeNumbers)) # remove numbers
+doc_train = tm_map(doc_train, content_transformer(removePunctuation)) # remove punctuation
+doc_train = tm_map(doc_train, content_transformer(stripWhitespace)) ## remove excess white-space
+
+doc_test = doc_test_raw
+doc_test = tm_map(doc_test, content_transformer(tolower)) 
+doc_test = tm_map(doc_test, content_transformer(removeNumbers)) 
+doc_test = tm_map(doc_test, content_transformer(removePunctuation)) 
+doc_test = tm_map(doc_test, content_transformer(stripWhitespace))
+
+doc_train = tm_map(doc_train, content_transformer(removeWords), stopwords("en"))
+doc_test = tm_map(doc_test, content_transformer(removeWords), stopwords("en"))
+```
+
+### Create a doc-term-matrix
+```{r}
+DTM_train = DocumentTermMatrix(doc_train, control = list(weighting = weightTfIdf))
+DTM_test = DocumentTermMatrix(doc_test, control = list(weighting = weightTfIdf))
+```
+
+### Remove those terms that have count 0 in >99.6% of docs
+```{r}
+DTM_train = removeSparseTerms(DTM_train, 0.996)
+DTM_test = removeSparseTerms(DTM_test, 0.996)
+
+DTM_train_dataFrame = as.data.frame(as.matrix(DTM_train))
+DTM_test_dataFrame = as.data.frame(as.matrix(DTM_test))
+```
+
+### Only handle the words that are both in the test set and training set.
+```{r}
+intersection = intersect(names(DTM_train_dataFrame),names(DTM_test_dataFrame))
+DTM_train_dataFrame = DTM_train_dataFrame[,intersection]
+DTM_test_dataFrame = DTM_test_dataFrame[,intersection]
+```
+
+### Convert to dataframe for nb and rf classifiers
+```{r}
+author_train = factor(names(train))
+author_test = factor(names(test))
+
+X_train<-data.frame(DTM_train_dataFrame)
+X_train$author = author_train
+X_test<-data.frame(DTM_test_dataFrame)
+X_test$author = author_test
+```
+
+### Model 1: Naive Bayes
+This model assumes words are independently distributed.
+```{r}
+library(naivebayes)
+nb.listing = naive_bayes(author ~ ., data = X_train)
+nb.pred = data.frame(predict(nb.listing,X_test))
+compare_nb = data.frame(cbind(nb.pred,X_test$author))
+compare_nb$correct = compare_nb$predict.nb.listing..X_test. == compare_nb$X_test.author
+mean(compare_nb$correct)
+```
+This model correctly predicts the author about 58.4% of the time across the entire test set.
+
+### Model 2: Random Forest
+```{r}
+set.seed(1)
+library(randomForest)
+rf.listing = randomForest(author ~ ., data = X_train, distribution = 'multinomial', n.trees=200)
+rf.pred = data.frame(predict(rf.listing,newdata = X_test))
+compare_rf = data.frame(cbind(rf.pred,X_test$author))
+compare_rf$correct = compare_rf$predict.rf.listing..newdata...X_test. == compare_rf$X_test.author
+mean(compare_rf$correct)
+```
+This model correctly predicts the author about 66.36% of the time across the entire test set.
+
+### Conclusion and Insights
+Overall, Naive Bayes and Random Forest both give decent results in predicting author identities with prediction accuracies of 58.4% and 66.36%, respectively. Naive Bayes may not be a good model for classifying authors because it assumes that all variables are independent and word usage is in no way independent. Although, in terms of computing time, Naive Bayes is far more efficient to run than Random Forest is.
